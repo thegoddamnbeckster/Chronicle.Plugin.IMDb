@@ -1,0 +1,10 @@
+﻿{
+  "plugin_id": "chronicle.plugin.imdb",
+  "name": "IMDb",
+  "version": "1.0.0",
+  "author": "thegoddamnbeckster",
+  "description": "Chronicle metadata plugin for IMDb.",
+  "entry_type": "Chronicle.Plugin.IMDb.IMDbPlugin",
+  "min_chronicle_version": "0.6.0",
+  "supported_media_types": ["movie", "tv"]
+}
