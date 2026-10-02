@@ -10,7 +10,7 @@ namespace Chronicle.Plugin.IMDb;
 internal static class ImdbMediaTypes
 {
     public const string Movies = "movies", Tv = "tv", Anime = "anime", AnimeMovies = "anime_movies",
-        MusicVideos = "music_videos", Game = "game", People = "people";
+        MusicVideos = "music_videos", Game = "game", People = "people", FanEdits = "fanedits";
 
     /// <summary>Film-like types. "video" is in here, but a video whose genres include Music is a
     /// music video, not a movie (<see cref="Accepts"/> checks that).</summary>
@@ -24,7 +24,7 @@ internal static class ImdbMediaTypes
     private static Family FamilyOf(string? mediaTypeName) => mediaTypeName?.ToLowerInvariant() switch
     {
         null => Family.Any,
-        Movies or "movie" or "fanedits" or AnimeMovies => Family.Movie,
+        Movies or "movie" or FanEdits or AnimeMovies => Family.Movie,
         Tv or Anime => Family.Series,
         var n when n.StartsWith("tv ", StringComparison.Ordinal) => Family.Series,
         MusicVideos => Family.MusicVideo,

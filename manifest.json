@@ -1,7 +1,7 @@
 {
   "plugin_id":             "chronicle.plugin.imdb",
   "name":                  "IMDb",
-  "version":               "1.0.2",
+  "version":               "1.1.0",
   "author":                "Chronicle Contributors",
   "description":           "Movie, TV, music video and video game metadata, cast, crew and IMDb ratings from IMDb's non-commercial datasets, matched from a local index (about 2 GB download, about 10 GB on disk). No account or API key. Information courtesy of IMDb (https://www.imdb.com). Used with permission.",
   "min_chronicle_version": "0.7.0",

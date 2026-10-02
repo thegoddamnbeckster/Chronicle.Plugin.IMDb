@@ -49,7 +49,7 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
 
     public string PluginId => "chronicle.plugin.imdb";
     public string Name     => "IMDb";
-    public string Version  => "1.0.2";
+    public string Version  => "1.1.0";
     public string Author   => "Chronicle Contributors";
 
     // ── Capabilities ──────────────────────────────────────────────────────────
@@ -64,6 +64,11 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
     public MediaTypeSupport[] GetSupportedMediaTypes() =>
     [
         new() { MediaTypeName = ImdbMediaTypes.Movies, DisplayName = "Movies", HierarchyLevels = 1,
+                DefaultPriority = Priority, SupportedFields = [.. TitleFields] },
+        // Fan Edits are identified by the FanEdit plugin alone; EnrichOnly keeps IMDb out of their
+        // Add Media / file-scan search (it would only return the unedited original) while letting it
+        // enrich them. No DisplayName: IMDb doesn't register the type, the FanEdit plugin does.
+        new() { MediaTypeName = ImdbMediaTypes.FanEdits, HierarchyLevels = 1, EnrichOnly = true,
                 DefaultPriority = Priority, SupportedFields = [.. TitleFields] },
         new() { MediaTypeName = ImdbMediaTypes.Tv, DisplayName = "TV", HierarchyLevels = 3,
                 HierarchyLabels = ["Show", "Season", "Episode"], DefaultPriority = Priority,

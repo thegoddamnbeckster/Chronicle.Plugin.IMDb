@@ -473,6 +473,16 @@ public class ImdbMetadataProviderTests : IDisposable
     }
 
     [Fact]
+    public void MediaTypes_FanEditsIsEnrichOnly_AndDoesNotRegisterTheType()
+    {
+        var fanEdits = _provider.GetSupportedMediaTypes().Single(t => t.MediaTypeName == "fanedits");
+        fanEdits.EnrichOnly.Should().BeTrue("IMDb must not take part in the Fan Edits identity search");
+        fanEdits.DisplayName.Should().BeEmpty("the FanEdit plugin owns the type");
+        _provider.GetSupportedMediaTypes().Where(t => t.EnrichOnly).Select(t => t.MediaTypeName)
+            .Should().Equal("fanedits");
+    }
+
+    [Fact]
     public void MediaTypes_DeclareMusicVideosAndVideoGames()
     {
         var types = _provider.GetSupportedMediaTypes();
