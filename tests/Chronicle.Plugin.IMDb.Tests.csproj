@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Chronicle.Plugin.IMDb.csproj" />
+    <!-- The plugin compiles against Chronicle.Plugins without copying it (the host provides it);
+         the tests need the real assembly. -->
+    <ProjectReference Include="..\..\Chronicle\src\Chronicle.Plugins\Chronicle.Plugins.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+    <PackageReference Include="FluentAssertions" Version="6.*" />
+    <!-- The plugin uses the host's SQLite at runtime; tests supply one, the same versions
+         Chronicle.Data pins (see its csproj for why the bundle is pinned). -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.*" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+</Project>

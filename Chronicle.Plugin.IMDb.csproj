@@ -1,15 +1,35 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Chronicle.Plugin.IMDb</AssemblyName>
     <RootNamespace>Chronicle.Plugin.IMDb</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <Version>1.0.0</Version>
-    <Authors>thegoddamnbeckster</Authors>
-    <Description>Chronicle metadata plugin for IMDb.</Description>
+    <Authors>Chronicle Contributors</Authors>
+    <Description>Chronicle metadata provider built from IMDb's non-commercial datasets.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Chronicle/src/Chronicle.Plugins/Chronicle.Plugins.csproj" />
+    <InternalsVisibleTo Include="Chronicle.Plugin.IMDb.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Chronicle\src\Chronicle.Plugins\Chronicle.Plugins.csproj"
+                      Private="false" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Compile-time only. Chronicle's host already loads Microsoft.Data.Sqlite (via EF Core)
+         together with its native SQLite build, and PluginLoadContext falls through to the
+         host's copy for anything not in the plugin folder. Shipping our own copy would load a
+         second, separately initialised SQLite stack inside the plugin's load context. -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.*"
+                      ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="manifest.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

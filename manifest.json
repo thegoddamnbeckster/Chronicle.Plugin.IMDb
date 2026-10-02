@@ -1,10 +1,72 @@
-﻿{
-  "plugin_id": "chronicle.plugin.imdb",
-  "name": "IMDb",
-  "version": "1.0.0",
-  "author": "thegoddamnbeckster",
-  "description": "Chronicle metadata plugin for IMDb.",
-  "entry_type": "Chronicle.Plugin.IMDb.IMDbPlugin",
-  "min_chronicle_version": "0.6.0",
-  "supported_media_types": ["movie", "tv"]
+{
+  "plugin_id":             "chronicle.plugin.imdb",
+  "name":                  "IMDb",
+  "version":               "1.0.0",
+  "author":                "Chronicle Contributors",
+  "description":           "Movie, TV, music video and video game metadata, cast, crew and IMDb ratings from IMDb's non-commercial datasets, matched from a local index (about 2 GB download, about 10 GB on disk). No account or API key. Information courtesy of IMDb (https://www.imdb.com). Used with permission.",
+  "min_chronicle_version": "0.7.0",
+  "entry_type":            "Chronicle.Plugin.IMDb.ImdbMetadataProvider",
+  "iconUrl":               "https://www.imdb.com/favicon.ico",
+  "brandColorLight":       "#F5C518",
+  "brandColorDark":        "#F5C518",
+  "fixMatchHint":          "Enter an IMDb link or id, e.g. https://www.imdb.com/title/tt0133093/ or tt0133093 (people: https://www.imdb.com/name/nm0000206/ or nm0000206). Mobile and IMDbPro links work too.",
+  "max_enrichment_concurrency": 4,
+  "rating_sources": [
+    {
+      "key":          "imdb",
+      "display_name": "IMDb",
+      "scale":        10,
+      "kodi_name":    "imdb",
+      "url_template": "https://www.imdb.com/title/{id}/",
+      "attribution":  "Information courtesy of IMDb (https://www.imdb.com). Used with permission."
+    }
+  ],
+  "metadata_fields": [
+    { "key": "original_title",    "display_name": "Original Title",      "value_type": "text",           "blob_keys": ["originalTitle"],    "group": "Titles",         "sortable": true, "filterable": true, "kodi_label": "originaltitle" },
+    { "key": "alternate_titles",  "display_name": "Alternate Titles",    "value_type": "structured",     "blob_keys": ["alternateTitles"],  "group": "Titles" },
+    { "key": "end_year",          "display_name": "End Year",            "value_type": "integer",        "blob_keys": ["endYear"],          "group": "Release",        "sortable": true, "filterable": true },
+    { "key": "title_format",      "display_name": "Format",              "value_type": "text",           "blob_keys": ["titleFormat"],      "group": "Classification", "filterable": true },
+    { "key": "is_adult",          "display_name": "Adult",               "value_type": "boolean",        "blob_keys": ["isAdult"],          "group": "Classification", "filterable": true },
+    { "key": "episode_count",     "display_name": "Episodes",            "value_type": "integer",        "blob_keys": ["episodeCount"],     "group": "Release",        "sortable": true },
+    { "key": "unplaced_episodes", "display_name": "Unnumbered Episodes", "value_type": "structured",     "blob_keys": ["unplacedEpisodes"], "group": "Release" },
+    { "key": "professions",       "display_name": "Professions",         "value_type": "text_list",      "blob_keys": ["professions"],      "group": "People",         "filterable": true },
+    { "key": "known_for",         "display_name": "Known For",           "value_type": "title_ref_list", "blob_keys": ["knownFor"],         "group": "People" },
+    { "key": "artist",            "display_name": "Artist",              "value_type": "person_list",    "blob_keys": ["artist"],           "group": "People",         "sortable": true, "filterable": true, "kodi_label": "artist" }
+  ],
+  "background_tasks": [
+    {
+      "task_id":         "sync-imdb-datasets",
+      "display_name":    "Sync IMDb Datasets",
+      "description":     "Downloads IMDb's datasets and builds the local index every IMDb lookup uses. Nothing is matched until this has run once. Later runs do nothing unless IMDb has published new files or the plugin's scope settings changed; the existing index stays in use until a new one is complete. Progress is logged to imdb-sync.log in the plugin's data folder.",
+      "default_cron":    "0 3 * * 1",
+      "default_enabled": false,
+      "schedulable":     true,
+      "run_confirmation": {
+        "title":   "Download IMDb datasets?",
+        "message": "Downloads about 2 GB from IMDb and builds a local index of about 10 GB in the plugin's data folder, which takes around 10-15 minutes and needs about 12 GB free (the current index stays in use until the new one is finished). Later runs only rebuild when IMDb has published new files. See the plugin settings to make the index smaller."
+      }
+    },
+    {
+      "task_id":         "refresh-imdb-ratings",
+      "display_name":    "Refresh IMDb Ratings",
+      "description":     "Updates scores and vote counts in the local index from IMDb's daily ratings file (about 9 MB). Does nothing until Sync IMDb Datasets has built an index.",
+      "default_cron":    "0 4 * * *",
+      "default_enabled": true,
+      "schedulable":     true
+    },
+    {
+      "task_id":         "fetch-missing-metadata",
+      "display_name":    "Fetch Missing Metadata",
+      "description":     "Matches items that have no IMDb data yet against the local index. Items stay queued until Sync IMDb Datasets has built an index.",
+      "default_cron":    "0 5 * * *",
+      "default_enabled": true
+    },
+    {
+      "task_id":         "resync-all-metadata",
+      "display_name":    "Re-sync All Metadata",
+      "description":     "Re-reads IMDb data for every matched item from the local index, picking up new ratings, credits and titles after a sync. Local reads only, no network.",
+      "default_cron":    "0 6 * * 1",
+      "default_enabled": false
+    }
+  ]
 }
