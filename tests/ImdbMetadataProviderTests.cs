@@ -275,7 +275,13 @@ public class ImdbMetadataProviderTests : IDisposable
         unplaced.GetArrayLength().Should().Be(1);
         unplaced[0].GetProperty("id").GetString().Should().Be("tt9999902");
         unplaced[0].GetProperty("title").GetString().Should().Be("Good Cop Bad Cop");
-        m.Crew.Should().ContainSingle(c => c.Name == "Vince Gilligan" && c.Job == "Writer");
+        // Episode directors/writers aren't credited on the show (each episode credits its own),
+        // but the full list is kept in the show's data.
+        m.Crew.Should().NotContain(c => c.Name == "Vince Gilligan");
+        var seriesCrew = ext.GetProperty("seriesCrew");
+        seriesCrew.GetArrayLength().Should().Be(1);
+        seriesCrew[0].GetProperty("name").GetString().Should().Be("Vince Gilligan");
+        seriesCrew[0].GetProperty("job").GetString().Should().Be("Writer");
     }
 
     [Fact]
@@ -366,6 +372,9 @@ public class ImdbMetadataProviderTests : IDisposable
         m.Title.Should().Be("Ozymandias");
         m.Rating.Should().Be(10.0);
         m.Cast.Should().ContainSingle(c => c.Name == "Bryan Cranston" && c.Role == "Walter White");
+        var pilot = await _provider.GetByIdAsync("imdb:tt0959621");
+        pilot.Crew.Should().Contain(c => c.Name == "Vince Gilligan" && c.Job == "Director",
+            "an episode keeps its own directors and writers");
         var ext = Ext(m);
         ext.GetProperty("show").GetString().Should().Be("tt0903747");
         ext.GetProperty("seasonNumber").GetInt32().Should().Be(5);

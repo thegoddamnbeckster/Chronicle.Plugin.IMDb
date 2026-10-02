@@ -39,8 +39,21 @@ internal static class ImdbMapper
         var crew = index.GetCrew(t.Id);
         var ext = BaseExtended(index, t, rating, akas, principals);
 
-        if (ImdbMediaTypes.IsSeries(t))
+        var isSeries = ImdbMediaTypes.IsSeries(t);
+        if (isSeries)
         {
+            // A series' title.crew is every director and writer of every episode (222 people
+            // for Law & Order: SVU). Credited on the show, each becomes a Chronicle person record
+            // the moment the show is matched, duplicating what each episode credits itself, and
+            // that was most of the first full run's time. The show is credited with its own
+            // principals only; the full list is kept here, as plain names and ids, so nothing is
+            // dropped, and every person's IMDb filmography still lists all of it.
+            ext["seriesCrew"] = crew.Select(c => new Dictionary<string, object?>
+            {
+                ["nconst"] = ImdbIds.FormatName(c.PersonId), ["name"] = c.Name,
+                ["job"] = c.Role == ImdbSchema.RoleDirector ? "Director" : "Writer",
+            }).ToList();
+
             var episodes = index.GetEpisodes(t.Id);
             ext["episodeCount"] = episodes.Count;
             ext["seasonCount"] = episodes.Where(e => e.Season is not null).Select(e => e.Season).Distinct().Count();
@@ -74,7 +87,7 @@ internal static class ImdbMapper
             Genres         = [.. t.Genres],
             Rating         = rating?.Rating,
             Cast           = MapCast(principals),
-            Crew           = MapCrew(principals, crew),
+            Crew           = MapCrew(principals, isSeries ? [] : crew),
             // Only the original title, not every alternate title: Chronicle feeds stored
             // alternate names to every provider's search as extra queries, and a title with 70
             // regional names would mean up to 140 extra searches against rate-limited providers.

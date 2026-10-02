@@ -1,7 +1,7 @@
 {
   "plugin_id":             "chronicle.plugin.imdb",
   "name":                  "IMDb",
-  "version":               "1.0.1",
+  "version":               "1.0.2",
   "author":                "Chronicle Contributors",
   "description":           "Movie, TV, music video and video game metadata, cast, crew and IMDb ratings from IMDb's non-commercial datasets, matched from a local index (about 2 GB download, about 10 GB on disk). No account or API key. Information courtesy of IMDb (https://www.imdb.com). Used with permission.",
   "min_chronicle_version": "0.7.0",
@@ -29,6 +29,7 @@
     { "key": "is_adult",          "display_name": "Adult",               "value_type": "boolean",        "blob_keys": ["isAdult"],          "group": "Classification", "filterable": true },
     { "key": "episode_count",     "display_name": "Episodes",            "value_type": "integer",        "blob_keys": ["episodeCount"],     "group": "Release",        "sortable": true },
     { "key": "unplaced_episodes", "display_name": "Unnumbered Episodes", "value_type": "structured",     "blob_keys": ["unplacedEpisodes"], "group": "Release" },
+    { "key": "series_crew",       "display_name": "All Episode Directors & Writers", "value_type": "structured", "blob_keys": ["seriesCrew"], "group": "People" },
     { "key": "professions",       "display_name": "Professions",         "value_type": "text_list",      "blob_keys": ["professions"],      "group": "People",         "filterable": true },
     { "key": "known_for",         "display_name": "Known For",           "value_type": "title_ref_list", "blob_keys": ["knownFor"],         "group": "People" },
     { "key": "artist",            "display_name": "Artist",              "value_type": "person_list",    "blob_keys": ["artist"],           "group": "People",         "sortable": true, "filterable": true, "kodi_label": "artist" }
