@@ -49,7 +49,7 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
 
     public string PluginId => "chronicle.plugin.imdb";
     public string Name     => "IMDb";
-    public string Version  => "1.0.0";
+    public string Version  => "1.0.1";
     public string Author   => "Chronicle Contributors";
 
     // ── Capabilities ──────────────────────────────────────────────────────────

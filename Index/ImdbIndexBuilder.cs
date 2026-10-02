@@ -32,17 +32,44 @@ internal sealed class ImdbIndexBuilder(ImdbScope scope, Action<string> log)
 
     public Dictionary<string, long> RowCounts { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>SQLite's temp directory is process-wide, so builds in one process run one at a
+    /// time (the sync lock already ensures that per data folder; this covers several folders).</summary>
+    internal static readonly object BuildGate = new();
+
     public void Build(DatasetFiles files, string outputPath, IReadOnlyDictionary<string, string> sourceStamps,
         CancellationToken ct)
     {
-        if (File.Exists(outputPath)) File.Delete(outputPath);
-        var total = Stopwatch.StartNew();
-
-        using var db = new SqliteConnection(new SqliteConnectionStringBuilder
+        lock (BuildGate)
         {
-            DataSource = outputPath, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false,
-        }.ToString());
-        db.Open();
+            if (File.Exists(outputPath)) File.Delete(outputPath);
+            var total = Stopwatch.StartNew();
+
+            using var db = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = outputPath, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false,
+            }.ToString());
+            db.Open();
+            var scratchDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(outputPath))!, "build-temp");
+            var redirected = UseTempDirectory(db, scratchDir);
+            try
+            {
+                BuildInto(db, files, outputPath, sourceStamps, total, ct);
+            }
+            finally
+            {
+                if (redirected) ResetTempDirectory(db);
+                db.Close();
+                try { Directory.Delete(scratchDir, recursive: true); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            log($"IMDb index built in {total.Elapsed:hh\\:mm\\:ss}: {new FileInfo(outputPath).Length / 1048576.0:N0} MB");
+        }
+    }
+
+    private void BuildInto(SqliteConnection db, DatasetFiles files, string outputPath,
+        IReadOnlyDictionary<string, string> sourceStamps, Stopwatch total, CancellationToken ct)
+    {
         Exec(db, "PRAGMA page_size = 8192");
         Exec(db, "PRAGMA journal_mode = OFF");
         Exec(db, "PRAGMA synchronous = OFF");
@@ -89,8 +116,6 @@ internal sealed class ImdbIndexBuilder(ImdbScope scope, Action<string> log)
         // Leave the file in a normal, shareable state for the read-only readers.
         Exec(db, "PRAGMA locking_mode = NORMAL");
         Exec(db, "PRAGMA journal_mode = DELETE");
-        db.Close();
-        log($"IMDb index built in {total.Elapsed:hh\\:mm\\:ss}: {new FileInfo(outputPath).Length / 1048576.0:N0} MB");
 
         void Step(string name, Func<long> work)
         {
@@ -103,6 +128,27 @@ internal sealed class ImdbIndexBuilder(ImdbScope scope, Action<string> log)
                 (_duplicateKeys > duplicatesBefore ? $" ({_duplicateKeys - duplicatesBefore:N0} repeated keys skipped)" : ""));
         }
     }
+
+    /// <summary>
+    /// Sorting 100 million rows for the indexes spills gigabytes of scratch files, which SQLite
+    /// puts in the system temp folder by default. Nothing this plugin writes belongs outside the
+    /// folder Chronicle is installed in, so the build points SQLite's temp directory at
+    /// <c>{data_dir}/build-temp</c> for the duration of the build, then resets it to SQLite's
+    /// default (Chronicle itself never sets one).
+    ///
+    /// Windows only: the setting is process-wide, and only SQLite's Windows build guards it with a
+    /// mutex, which is what makes changing it safe while Chronicle's own connections are busy.
+    /// Elsewhere SQLite's default (TMPDIR, /var/tmp, /tmp) is left alone.
+    /// </summary>
+    private static bool UseTempDirectory(SqliteConnection db, string dir)
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        Directory.CreateDirectory(dir);
+        Exec(db, $"PRAGMA temp_store_directory = '{dir.Replace("'", "''")}'");
+        return true;
+    }
+
+    private static void ResetTempDirectory(SqliteConnection db) => Exec(db, "PRAGMA temp_store_directory = ''");
 
     // ── Loaders ───────────────────────────────────────────────────────────────
 

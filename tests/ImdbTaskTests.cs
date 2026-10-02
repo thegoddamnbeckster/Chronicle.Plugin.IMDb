@@ -48,6 +48,24 @@ public class ImdbTaskTests : IDisposable
     }
 
     [Fact]
+    public async Task Sync_KeepsScratchFilesInsideTheDataFolder_AndCleansThemUp()
+    {
+        await SyncTask().RunAsync(CancellationToken.None);
+        Directory.Exists(Path.Combine(_dir, "build-temp")).Should().BeFalse();
+
+        // The process-wide setting is put back, so Chronicle's own databases aren't affected.
+        // Read under the build gate: other test classes build indexes in parallel.
+        lock (ImdbIndexBuilder.BuildGate)
+        {
+            using var c = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+            c.Open();
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = "PRAGMA temp_store_directory";
+            (cmd.ExecuteScalar() as string ?? "").Should().BeEmpty();
+        }
+    }
+
+    [Fact]
     public async Task Sync_SecondRunWithUnchangedFiles_DoesNothing()
     {
         await SyncTask().RunAsync(CancellationToken.None);
