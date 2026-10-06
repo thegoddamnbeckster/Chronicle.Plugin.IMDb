@@ -49,7 +49,7 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
 
     public string PluginId => "chronicle.plugin.imdb";
     public string Name     => "IMDb";
-    public string Version  => "1.1.0";
+    public string Version  => "1.2.0";
     public string Author   => "Chronicle Contributors";
 
     // ── Capabilities ──────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
         ct.ThrowIfCancellationRequested();
         var mediaType = context.MediaTypeName?.ToLowerInvariant();
 
-        // People: by id only, never by name (people-section design rule, same as TMDB).
+        // People: by id, or by name together with a credit or birth year that confirms it -- never by name alone.
         if (mediaType == ImdbMediaTypes.People)
             return Task.FromResult(SearchPerson(context));
 
@@ -219,16 +219,93 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
         return Task.FromResult(result);
     }
 
+    /// <summary>
+    /// A person is found by an IMDb id Chronicle already holds, or -- when it has none -- by NAME AND CREDIT
+    /// together: the people credited on the films and shows this person is credited on, whose name equals this
+    /// person's. A name alone never matches (two people share most names); a name plus work they are known to
+    /// have done does. A birth year, when both sides have one, must agree.
+    /// </summary>
     private IReadOnlyList<ScoredCandidate> SearchPerson(MediaSearchContext context)
     {
-        if (context.KnownExternalIds?.GetValueOrDefault(ImdbMapper.Source) is not { } raw
-            || !ImdbIds.TryParse(raw, out var id, out _) || id.Kind != ImdbIdKind.Person)
+        using var index = OpenIndex();
+
+        if (context.KnownExternalIds?.GetValueOrDefault(ImdbMapper.Source) is { } raw)
+        {
+            if (!ImdbIds.TryParse(raw, out var id, out _) || id.Kind != ImdbIdKind.Person) return [];
+            return index.GetName(id.Number) is { } name
+                ? [new ScoredCandidate(ImdbMapper.MapPerson(index, name), 100, "cross-reference ID match")]
+                : [];
+        }
+
+        var byCredits = SearchPersonByCredits(index, context);
+        return byCredits.Count > 0 ? byCredits : SearchPersonByBirthYear(index, context);
+    }
+
+    /// <summary>
+    /// Name plus birth year, when the person has no credit on a title IMDb lists (IMDb's public data names only the
+    /// top-billed cast and key crew, so most minor credits can't corroborate anyone). Both must match exactly and
+    /// exactly one IMDb person may fit: two people of the same name born the same year are told apart by nothing
+    /// Chronicle knows, so that matches nothing.
+    /// </summary>
+    internal static IReadOnlyList<ScoredCandidate> SearchPersonByBirthYear(ImdbIndexReader index, MediaSearchContext context)
+    {
+        if (context.KnownBirthYear is not { } year) return [];
+        var wanted = TitleText.NormalizePersonName(context.Name);
+        if (wanted.Length == 0) return [];
+
+        var ids = ImdbPeopleLookup.Find(index, wanted, year);
+        if (ids.Count != 1 || index.GetName(ids[0]) is not { } name) return [];
+        return [new ScoredCandidate(ImdbMapper.MapPerson(index, name), 80, "name exact, birth year exact, the only such person")];
+    }
+
+    /// <summary>Titles read per person: a person's credits beyond the first dozens add confidence, not coverage.</summary>
+    private const int MaxCreditTitles = 40;
+
+    internal static IReadOnlyList<ScoredCandidate> SearchPersonByCredits(ImdbIndexReader index, MediaSearchContext context)
+    {
+        var wanted = TitleText.NormalizePersonName(context.Name);
+        if (wanted.Length == 0 || context.KnownCreditExternalIds is not { Count: > 0 } credited) return [];
+
+        // person id -> how many of this person's known titles also list a same-named person
+        var hits = new Dictionary<int, int>();
+        foreach (var raw in credited.Take(MaxCreditTitles))
+        {
+            if (!ImdbIds.TryParse(raw, out var titleId, out _) || titleId.Kind != ImdbIdKind.Title) continue;
+
+            var onTitle = new HashSet<int>();
+            foreach (var p in index.GetPrincipals(titleId.Number))
+                if (p.Name is { } n && TitleText.NormalizePersonName(n) == wanted) onTitle.Add(p.PersonId);
+            foreach (var c in index.GetCrew(titleId.Number))
+                if (c.Name is { } n && TitleText.NormalizePersonName(n) == wanted) onTitle.Add(c.PersonId);
+            foreach (var pid in onTitle) hits[pid] = hits.GetValueOrDefault(pid) + 1;
+        }
+        if (hits.Count == 0) return [];
+
+        var candidates = new List<(NameRow Name, int Count, int Score, string Reason)>();
+        foreach (var (pid, count) in hits)
+        {
+            if (index.GetName(pid) is not { } name) continue;
+
+            var score = count >= 5 ? 90 : count >= 3 ? 80 : 70;
+            var reason = $"name exact, credited on {count} of this person's known title(s)";
+            if (context.KnownBirthYear is { } known && name.BirthYear is { } born)
+            {
+                if (known != born) continue;                    // a different person with the same name
+                score = Math.Min(100, score + 10);
+                reason += ", birth year exact";
+            }
+            candidates.Add((name, count, score, reason));
+        }
+
+        var ranked = candidates.OrderByDescending(c => c.Score).ThenByDescending(c => c.Count).ToList();
+        // Two same-named people credited on equally many of the same titles cannot be told apart: no match
+        // is better than a guess (a wrong id here would pull a stranger's credits and biography in).
+        if (ranked.Count > 1 && ranked[0].Score == ranked[1].Score && ranked[0].Count == ranked[1].Count)
             return [];
 
-        using var index = OpenIndex();
-        return index.GetName(id.Number) is { } name
-            ? [new ScoredCandidate(ImdbMapper.MapPerson(index, name), 100, "cross-reference ID match")]
-            : [];
+        return ranked.Take(5)
+            .Select(c => new ScoredCandidate(ImdbMapper.MapPerson(index, c.Name), c.Score, c.Reason))
+            .ToList();
     }
 
     /// <summary>

@@ -102,6 +102,8 @@ internal static class ImdbFixture
         nm9999990	Queen	\N	\N	soundtrack	tt9999904
         nm9999991	Adult Actor	1980	\N	actor	tt9999903
         nm9999992	Nobody Credited	1990	\N	actor	\N
+        nm9999993	Twin Name	1975	\N	actor	\N
+        nm9999994	Twin Name	1975	\N	actor	\N
         """;
 
     public static readonly IReadOnlyDictionary<string, string> Files = new Dictionary<string, string>

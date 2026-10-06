@@ -53,7 +53,10 @@ internal sealed class ImdbIndexReader : IDisposable
     private readonly SqliteConnection _db;
     private Dictionary<string, string>? _meta;
 
-    private ImdbIndexReader(SqliteConnection db) => _db = db;
+    private ImdbIndexReader(SqliteConnection db, string path) { _db = db; Path = path; }
+
+    /// <summary>The index file this reader has open.</summary>
+    public string Path { get; }
 
     public static ImdbIndexReader Open(string path)
     {
@@ -62,7 +65,7 @@ internal sealed class ImdbIndexReader : IDisposable
             DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false, DefaultTimeout = 60,
         }.ToString());
         db.Open();
-        return new ImdbIndexReader(db);
+        return new ImdbIndexReader(db, path);
     }
 
     public IReadOnlyDictionary<string, string> Meta => _meta ??= Query(
@@ -142,6 +145,16 @@ internal sealed class ImdbIndexReader : IDisposable
             Split(Str(r, 4)),
             [.. Split(Str(r, 5)).Select(s => int.TryParse(s, out var n) ? n : 0).Where(n => n > 0)]))
         .FirstOrDefault();
+
+    /// <summary>Every person with a known birth year: id, name, year. Streamed (there are millions).</summary>
+    public IEnumerable<(int Id, string Name, int Birth)> EnumerateNamesWithBirthYear()
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "SELECT id, name, birth_year FROM names WHERE birth_year IS NOT NULL";
+        cmd.CommandTimeout = 0;
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) yield return (r.GetInt32(0), r.GetString(1), r.GetInt32(2));
+    }
 
     /// <summary>Every principal and crew credit for a person, from the by-person indexes.</summary>
     public IReadOnlyList<PersonCreditRow> GetPersonCredits(int personId)

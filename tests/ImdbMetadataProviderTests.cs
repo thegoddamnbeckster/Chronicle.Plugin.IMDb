@@ -422,10 +422,115 @@ public class ImdbMetadataProviderTests : IDisposable
     }
 
     [Fact]
-    public async Task Search_Person_WithoutId_NeverSearchesByName()
+    public async Task Search_Person_WithoutId_NeverMatchesByNameAlone()
     {
         var results = await _provider.SearchAsync(Ctx("Keanu Reeves", type: "people"));
         results.Should().BeEmpty();
+    }
+
+    private static MediaSearchContext Person(string name, int? birthYear = null, params string[] credited) =>
+        Ctx(name, type: "people") with
+        {
+            KnownBirthYear = birthYear,
+            KnownCreditExternalIds = credited.Length > 0 ? credited : null,
+        };
+
+    [Fact]
+    public async Task Search_Person_ByNameAndACreditedTitle_IsMatched()
+    {
+        var results = await _provider.SearchAsync(Person("Keanu Reeves", null, "tt0133093"));
+
+        var match = results.Should().ContainSingle().Which;
+        match.Metadata.ExternalId.Should().Be("imdb:nm0000206");
+        match.Score.Should().Be(70);
+        match.ScoreReason.Should().Contain("credited on 1");
+    }
+
+    [Fact]
+    public async Task Search_Person_ABirthYearThatAgrees_RaisesTheScore()
+    {
+        var results = await _provider.SearchAsync(Person("Keanu Reeves", 1964, "tt0133093"));
+
+        results.Should().ContainSingle().Which.Score.Should().Be(80);
+    }
+
+    [Fact]
+    public async Task Search_Person_ABirthYearThatDisagrees_IsNoMatch()
+    {
+        // Same name, same film, a different birth year: another person.
+        (await _provider.SearchAsync(Person("Keanu Reeves", 1970, "tt0133093"))).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("keanu reeves")]
+    [InlineData("Keanu  Reeves")]
+    [InlineData("Keanú Reeves")]
+    public async Task Search_Person_NameComparisonIgnoresCaseSpacingAndAccents(string name)
+    {
+        (await _provider.SearchAsync(Person(name, null, "tt0133093"))).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Search_Person_NotCreditedOnAnyKnownTitle_IsNoMatch()
+    {
+        // Keanu Reeves is not credited on Breaking Bad.
+        (await _provider.SearchAsync(Person("Keanu Reeves", null, "tt0903747"))).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Search_Person_FindsCrewAsWellAsCast()
+    {
+        var results = await _provider.SearchAsync(Person("Vince Gilligan", null, "tt0903747"));
+
+        results.Should().ContainSingle().Which.Metadata.ExternalId.Should().Be("imdb:nm0319213");
+    }
+
+    [Fact]
+    public async Task Search_Person_ByNameAndBirthYear_WhenNoCreditCorroborates_IsMatched()
+    {
+        var results = await _provider.SearchAsync(Person("Nobody Credited", 1990));
+
+        var match = results.Should().ContainSingle().Which;
+        match.Metadata.ExternalId.Should().Be("imdb:nm9999992");
+        match.Score.Should().Be(80);
+    }
+
+    [Fact]
+    public async Task Search_Person_ByNameAndBirthYear_FoldsAccentsAndCase()
+    {
+        (await _provider.SearchAsync(Person("NOBODY cr\u00e9dited", 1990))).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Search_Person_ByNameAndBirthYear_AWrongYearIsNoMatch()
+    {
+        (await _provider.SearchAsync(Person("Nobody Credited", 1991))).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Search_Person_ByNameAndBirthYear_TwoPeopleOfThatNameAndYear_MatchesNothing()
+    {
+        (await _provider.SearchAsync(Person("Twin Name", 1975))).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Search_Person_NameAloneWithNoBirthYear_NeverMatches()
+    {
+        (await _provider.SearchAsync(Person("Nobody Credited"))).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Search_Person_ACreditMatchIsPreferredOverTheBirthYearRoute()
+    {
+        var match = (await _provider.SearchAsync(Person("Keanu Reeves", 1964, "tt0133093"))).Should().ContainSingle().Which;
+
+        match.ScoreReason.Should().Contain("credited on");
+    }
+
+    [Fact]
+    public async Task Search_Person_CreditsThatAreNotTitleIds_AreIgnored()
+    {
+        (await _provider.SearchAsync(Person("Keanu Reeves", null, "nm0000206", "garbage", "tv:1396"))).Should().BeEmpty();
     }
 
     [Fact]
