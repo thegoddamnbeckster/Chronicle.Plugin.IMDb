@@ -293,8 +293,15 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
                 var best = g.Select(h => (Hit: h, Score: ScoreCandidate(context, h.Raw, h.Title.StartYear),
                                           OwnTitle: h.Raw == h.Title.PrimaryTitle || h.Raw == h.Title.OriginalTitle))
                             .OrderByDescending(x => x.Score.Score).ThenByDescending(x => x.OwnTitle).First();
+                // The spelling that matched is carried on the candidate: a film catalogued under another title
+                // ("Saltwater") that the library knows as "Atomic Shark" is the same film, and Chronicle's
+                // name check needs to see the name that actually matched, not only the primary title.
+                var meta = Candidate(best.Hit.Title, best.Hit.Votes);
+                if (!string.Equals(best.Hit.Raw, meta.Title, StringComparison.OrdinalIgnoreCase)
+                    && !meta.AlternateNames.Contains(best.Hit.Raw, StringComparer.OrdinalIgnoreCase))
+                    meta.AlternateNames.Add(best.Hit.Raw);
                 return new Ranked(
-                    new ScoredCandidate(Candidate(best.Hit.Title, best.Hit.Votes), best.Score.Score, best.Score.Reason),
+                    new ScoredCandidate(meta, best.Score.Score, best.Score.Reason),
                     best.OwnTitle, best.Hit.Votes);
             });
     }
@@ -381,6 +388,7 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
         Year       = t.StartYear,
         RuntimeMinutes = t.Runtime,
         Genres     = [.. t.Genres],
+        AlternateNames = t.OriginalTitle is { } o && o != t.PrimaryTitle ? [o] : [],
         ExtendedData = System.Text.Json.JsonSerializer.SerializeToElement(new Dictionary<string, object?>
         {
             ["titleFormat"] = t.Type, ["votes"] = votes, ["originalTitle"] = t.OriginalTitle ?? t.PrimaryTitle,

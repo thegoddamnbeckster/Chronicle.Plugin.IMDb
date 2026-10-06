@@ -99,6 +99,8 @@ public class ImdbMetadataProviderTests : IDisposable
         var byAka = await _provider.SearchAsync(Ctx("Матрица", 1999));
         byAka[0].Metadata.ExternalId.Should().Be("imdb:tt0133093");
         byAka[0].Score.Should().Be(80);
+        // The spelling that matched rides on the candidate, so Chronicle's name check sees it.
+        byAka[0].Metadata.AlternateNames.Should().Contain("Матрица");
     }
 
     [Fact]
