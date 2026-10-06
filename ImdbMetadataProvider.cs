@@ -238,7 +238,17 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
         }
 
         var byCredits = SearchPersonByCredits(index, context);
-        return byCredits.Count > 0 ? byCredits : SearchPersonByBirthYear(index, context);
+        if (byCredits.Count > 0) return byCredits;
+        var byBirthYear = SearchPersonByBirthYear(index, context);
+        if (byBirthYear.Count > 0) return byBirthYear;
+
+        // IMDb is a source for people it can confirm, not one that has to cover everybody: with no id, no credit
+        // IMDb can confirm and no unique name-and-birth-year, there is nothing to look for and nothing failed. The
+        // host records this as Skipped (not applicable) rather than Not Found, so the Not Found list stays the
+        // list of things worth a look instead of filling with every person IMDb simply has no handle on.
+        throw new InvalidOperationException(
+            "IMDb matches a person only by an IMDb id, a credit it can confirm, or an exact name with a unique birth year; " +
+            "this person has none of those that IMDb recognises.");
     }
 
     /// <summary>

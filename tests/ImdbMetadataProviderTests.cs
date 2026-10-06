@@ -422,10 +422,19 @@ public class ImdbMetadataProviderTests : IDisposable
     }
 
     [Fact]
-    public async Task Search_Person_WithoutId_NeverMatchesByNameAlone()
+    public async Task Search_Person_WithoutId_NeverMatchesByNameAlone_AndIsNotApplicableRatherThanNotFound()
     {
-        var results = await _provider.SearchAsync(Ctx("Keanu Reeves", type: "people"));
-        results.Should().BeEmpty();
+        // InvalidOperationException is how a provider tells Chronicle "nothing to look for" (recorded as Skipped).
+        var act = () => _provider.SearchAsync(Ctx("Keanu Reeves", type: "people"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    /// <summary>A person IMDb has no handle on is "not applicable" (Skipped), not Not Found: the provider throws.</summary>
+    private async Task NotApplicable(MediaSearchContext context)
+    {
+        var act = () => _provider.SearchAsync(context);
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     private static MediaSearchContext Person(string name, int? birthYear = null, params string[] credited) =>
@@ -458,7 +467,7 @@ public class ImdbMetadataProviderTests : IDisposable
     public async Task Search_Person_ABirthYearThatDisagrees_IsNoMatch()
     {
         // Same name, same film, a different birth year: another person.
-        (await _provider.SearchAsync(Person("Keanu Reeves", 1970, "tt0133093"))).Should().BeEmpty();
+        await NotApplicable(Person("Keanu Reeves", 1970, "tt0133093"));
     }
 
     [Theory]
@@ -474,7 +483,7 @@ public class ImdbMetadataProviderTests : IDisposable
     public async Task Search_Person_NotCreditedOnAnyKnownTitle_IsNoMatch()
     {
         // Keanu Reeves is not credited on Breaking Bad.
-        (await _provider.SearchAsync(Person("Keanu Reeves", null, "tt0903747"))).Should().BeEmpty();
+        await NotApplicable(Person("Keanu Reeves", null, "tt0903747"));
     }
 
     [Fact]
@@ -504,19 +513,19 @@ public class ImdbMetadataProviderTests : IDisposable
     [Fact]
     public async Task Search_Person_ByNameAndBirthYear_AWrongYearIsNoMatch()
     {
-        (await _provider.SearchAsync(Person("Nobody Credited", 1991))).Should().BeEmpty();
+        await NotApplicable(Person("Nobody Credited", 1991));
     }
 
     [Fact]
     public async Task Search_Person_ByNameAndBirthYear_TwoPeopleOfThatNameAndYear_MatchesNothing()
     {
-        (await _provider.SearchAsync(Person("Twin Name", 1975))).Should().BeEmpty();
+        await NotApplicable(Person("Twin Name", 1975));
     }
 
     [Fact]
     public async Task Search_Person_NameAloneWithNoBirthYear_NeverMatches()
     {
-        (await _provider.SearchAsync(Person("Nobody Credited"))).Should().BeEmpty();
+        await NotApplicable(Person("Nobody Credited"));
     }
 
     [Fact]
@@ -530,7 +539,7 @@ public class ImdbMetadataProviderTests : IDisposable
     [Fact]
     public async Task Search_Person_CreditsThatAreNotTitleIds_AreIgnored()
     {
-        (await _provider.SearchAsync(Person("Keanu Reeves", null, "nm0000206", "garbage", "tv:1396"))).Should().BeEmpty();
+        await NotApplicable(Person("Keanu Reeves", null, "nm0000206", "garbage", "tv:1396"));
     }
 
     [Fact]
