@@ -35,7 +35,7 @@ public sealed class ImdbIdMissingException(string externalId)
 /// no season entity), <c>imdb:nm…</c> for people. Seasons and episodes are found through the
 /// parent show's id, the way TVMaze and TheTVDB find theirs; they're never searched by name.
 /// </summary>
-public sealed class ImdbMetadataProvider : IMetadataProvider
+public sealed class ImdbMetadataProvider : IMetadataProvider, IExternalIdPolicyProvider
 {
     /// <summary>Minimum score for a with-year match to skip the without-year search (shared cascade).</summary>
     private const int ExactMatchThreshold = 60;
@@ -48,6 +48,19 @@ public sealed class ImdbMetadataProvider : IMetadataProvider
     // ── Identity ──────────────────────────────────────────────────────────────
 
     public string PluginId => "chronicle.plugin.imdb";
+
+    /// <summary>
+    /// Every plugin that knows an IMDb id reports it "imdb:tt0137523"; Chronicle stores it bare under the shared "imdb"
+    /// source so all of them share one row per item. A person's id ("nm...") keeps its prefix, the form credits record.
+    /// </summary>
+    public ExternalIdPolicy GetExternalIdPolicy() => new()
+    {
+        Source = "imdb",
+        SharedRawIdPrefix = "imdb:",
+        KeepSharedPrefixWhenIdStarts = ["nm"],
+        CrossRefFormats = { ["default"] = "imdb:{id}" },
+        CrossRefValueKinds = ["string"],
+    };
     public string Name     => "IMDb";
     public string Version  => "1.2.0";
     public string Author   => "Chronicle Contributors";
