@@ -6,6 +6,10 @@
   "description":           "Movie, TV, music video and video game metadata, cast, crew and IMDb ratings from IMDb's non-commercial datasets, matched from a local index (about 2 GB download, about 10 GB on disk). No account or API key. Information courtesy of IMDb (https://www.imdb.com). Used with permission.",
   "min_chronicle_version": "0.7.0",
   "entry_type":            "Chronicle.Plugin.IMDb.ImdbMetadataProvider",
+  "sourceUrls": [
+    { "match": "^imdb:(tt\\d+)", "url": "https://www.imdb.com/title/$1/" },
+    { "match": "^imdb:(nm\\d+)", "url": "https://www.imdb.com/name/$1/" }
+  ],
   "iconUrl":               "https://www.imdb.com/favicon.ico",
   "brandColorLight":       "#F5C518",
   "brandColorDark":        "#F5C518",
