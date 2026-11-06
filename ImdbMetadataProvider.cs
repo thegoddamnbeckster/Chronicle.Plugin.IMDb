@@ -62,7 +62,7 @@ public sealed class ImdbMetadataProvider : IMetadataProvider, IExternalIdPolicyP
         CrossRefValueKinds = ["string"],
     };
     public string Name     => "IMDb";
-    public string Version  => "1.2.0";
+    public string Version  => System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(ImdbMetadataProvider).Assembly)?.InformationalVersion.Split('+')[0] ?? "1.2.1";
     public string Author   => "Chronicle Contributors";
 
     // ── Capabilities ──────────────────────────────────────────────────────────
