@@ -76,8 +76,8 @@ internal sealed class ImdbIndexStore(string dataDir)
             var name = Path.GetFileName(file);
             if (current is not null && (name == current || name == current + "-journal")) continue;
             try { File.Delete(file); }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
+            catch (IOException) { /* an old index file still in use; it is removed on a later build */ }
+            catch (UnauthorizedAccessException) { /* same */ }
         }
     }
 

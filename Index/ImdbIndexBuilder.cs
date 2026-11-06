@@ -60,8 +60,8 @@ internal sealed class ImdbIndexBuilder(ImdbScope scope, Action<string> log)
                 if (redirected) ResetTempDirectory(db);
                 db.Close();
                 try { Directory.Delete(scratchDir, recursive: true); }
-                catch (IOException) { }
-                catch (UnauthorizedAccessException) { }
+                catch (IOException) { /* best-effort removal of the scratch folder; it is a temporary one and the next build clears it */ }
+                catch (UnauthorizedAccessException) { /* same */ }
             }
             log($"IMDb index built in {total.Elapsed:hh\\:mm\\:ss}: {new FileInfo(outputPath).Length / 1048576.0:N0} MB");
         }

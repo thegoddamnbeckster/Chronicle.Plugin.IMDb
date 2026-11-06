@@ -79,7 +79,7 @@ internal static class ImdbPeopleLookup
             // Side files of earlier indexes are no use any more.
             foreach (var old in Directory.EnumerateFiles(Path.GetDirectoryName(path)!, "people-*.db"))
                 if (!string.Equals(old, path, StringComparison.OrdinalIgnoreCase))
-                    try { File.Delete(old); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                    try { File.Delete(old); } catch (IOException) { /* an older side file still in use; cleared on a later build */ } catch (UnauthorizedAccessException) { /* same */ }
             return path;
         }
     }

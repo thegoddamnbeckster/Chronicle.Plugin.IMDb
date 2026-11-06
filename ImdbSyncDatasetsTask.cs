@@ -142,7 +142,7 @@ public sealed class ImdbSyncDatasetsTask : IPluginTask
     private static void TryDelete(string path)
     {
         try { if (File.Exists(path)) File.Delete(path); }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
+        catch (IOException) { /* best-effort cleanup of a temporary file; the next run clears it */ }
+        catch (UnauthorizedAccessException) { /* same: leftover temporary file */ }
     }
 }

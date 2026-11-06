@@ -106,7 +106,7 @@ public sealed class ImdbRefreshRatingsTask : IPluginTask
         }, ct).ConfigureAwait(false);
 
         try { File.Delete(path); File.Delete(path + ".stamp"); }
-        catch (IOException) { }
+        catch (IOException) { /* a leftover download is cleared on the next run; the ratings are already committed */ }
 
         _log.Write($"Ratings: {rows:N0} scores refreshed in {sw.Elapsed:mm\\:ss}.");
     }

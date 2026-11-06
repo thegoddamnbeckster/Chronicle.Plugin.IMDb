@@ -27,8 +27,8 @@ internal sealed class ImdbSyncLog(string dataDir)
                 }
                 File.AppendAllText(Path, line);
             }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
+            catch (IOException) { /* the sync log is advisory; failing to write it must never fail the sync */ }
+            catch (UnauthorizedAccessException) { /* same */ }
         }
     }
 }
