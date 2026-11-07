@@ -5,7 +5,7 @@
     <RootNamespace>Chronicle.Plugin.IMDb</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.2.2</Version>
+    <Version>1.2.3</Version>
     <Authors>Chronicle Contributors</Authors>
     <Description>Chronicle metadata provider built from IMDb's non-commercial datasets.</Description>
   </PropertyGroup>
@@ -20,8 +20,11 @@
     <!-- Compile-time only. Chronicle's host already loads Microsoft.Data.Sqlite (via EF Core)
          together with its native SQLite build, and PluginLoadContext falls through to the
          host's copy for anything not in the plugin folder. Shipping our own copy would load a
-         second, separately initialised SQLite stack inside the plugin's load context. -->
-    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.*"
+         second, separately initialised SQLite stack inside the plugin's load context.
+         Pinned to the floor, NOT a floating 9.0.*: the plugin records the assembly version it was compiled
+         against and the host's copy must be that or newer. A floating reference picked up 9.0.22 when the host
+         shipped 9.0.21, so every IMDb search failed with FileNotFoundException (found 2026-11-07). -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.0"
                       ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
